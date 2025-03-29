@@ -2,8 +2,12 @@
 import React from 'react';
 import { LayoutDashboard, ListTodo, BarChart3, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Link, useLocation } from 'react-router-dom';
 
 const Header = () => {
+  const location = useLocation();
+  const currentPath = location.pathname;
+
   return (
     <header className="w-full py-4 px-6 flex justify-between items-center neomorph mb-6 animate-slide-in">
       <div className="flex items-center gap-2">
@@ -17,10 +21,30 @@ const Header = () => {
       </div>
       <nav>
         <ul className="flex space-x-2 md:space-x-6">
-          <NavItem icon={<LayoutDashboard size={20} />} text="Dashboard" active />
-          <NavItem icon={<ListTodo size={20} />} text="Tasks" />
-          <NavItem icon={<BarChart3 size={20} />} text="Analytics" />
-          <NavItem icon={<Settings size={20} />} text="Settings" />
+          <NavItem 
+            icon={<LayoutDashboard size={20} />} 
+            text="Dashboard" 
+            to="/"
+            active={currentPath === '/'}
+          />
+          <NavItem 
+            icon={<ListTodo size={20} />} 
+            text="Tasks" 
+            to="/tasks"
+            active={currentPath === '/tasks'} 
+          />
+          <NavItem 
+            icon={<BarChart3 size={20} />} 
+            text="Analytics" 
+            to="/analytics"
+            active={currentPath === '/analytics'} 
+          />
+          <NavItem 
+            icon={<Settings size={20} />} 
+            text="Settings" 
+            to="/settings"
+            active={currentPath === '/settings'} 
+          />
         </ul>
       </nav>
     </header>
@@ -30,14 +54,15 @@ const Header = () => {
 interface NavItemProps {
   icon: React.ReactNode;
   text: string;
+  to: string;
   active?: boolean;
 }
 
-const NavItem = ({ icon, text, active }: NavItemProps) => {
+const NavItem = ({ icon, text, to, active }: NavItemProps) => {
   return (
     <li>
-      <a 
-        href="#" 
+      <Link 
+        to={to} 
         className={cn(
           "flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300",
           active 
@@ -47,7 +72,7 @@ const NavItem = ({ icon, text, active }: NavItemProps) => {
       >
         {icon}
         <span className="hidden md:inline">{text}</span>
-      </a>
+      </Link>
     </li>
   );
 };

@@ -131,4 +131,58 @@
   .pulse {
     animation: pulse 1.5s infinite;
   }
+
+  /* New page transition animations */
+  @keyframes pageEnter {
+    0% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes pageExit {
+    0% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+  }
+
+  .page-transition-enter {
+    animation: pageEnter 0.3s ease-out forwards;
+  }
+
+  .page-transition-exit {
+    animation: pageExit 0.3s ease-out forwards;
+  }
+  
+  /* Hover animation for menu items */
+  .menu-item-hover {
+    @apply relative overflow-hidden;
+  }
+  
+  .menu-item-hover::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-full h-0.5 bg-primary transform scale-x-0 origin-bottom-right transition-transform duration-300;
+  }
+  
+  .menu-item-hover:hover::after {
+    @apply transform scale-x-100 origin-bottom-left;
+  }
+  
+  /* Card hover effect */
+  .card-hover {
+    @apply transition-all duration-300;
+  }
+  
+  .card-hover:hover {
+    @apply transform translate-y-[-5px] shadow-[10px_10px_20px_#e6e7f0,-10px_-10px_20px_#ffffff];
+  }
 }
