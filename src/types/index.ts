@@ -9,4 +9,6 @@ export interface Task {
   category?: string;
   progress?: number;
   completed?: boolean;
+  estimationType?: 'Minutes' | 'Hours' | 'Days';
+  estimationValue?: string;
 }

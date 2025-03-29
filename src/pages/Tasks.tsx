@@ -20,7 +20,9 @@ const initialTasks: Task[] = [
     date: 'Due Today',
     time: 'Today, 2:00 PM',
     category: 'Work',
-    progress: 70
+    progress: 70,
+    estimationType: 'Days',
+    estimationValue: '3'
   },
   {
     id: '2',
@@ -30,7 +32,9 @@ const initialTasks: Task[] = [
     date: 'Due Tomorrow',
     time: 'Tomorrow, 10:00 AM',
     category: 'Work',
-    progress: 30
+    progress: 30,
+    estimationType: 'Hours',
+    estimationValue: '2'
   },
   {
     id: '3',
@@ -40,7 +44,9 @@ const initialTasks: Task[] = [
     date: 'Due Wed',
     time: 'Wed, 11:00 AM',
     category: 'Work',
-    progress: 0
+    progress: 0,
+    estimationType: 'Minutes',
+    estimationValue: '45'
   },
   {
     id: '4',
@@ -50,7 +56,9 @@ const initialTasks: Task[] = [
     date: 'Due Thu',
     time: 'Thu, 3:00 PM',
     category: 'Marketing',
-    progress: 15
+    progress: 15,
+    estimationType: 'Hours',
+    estimationValue: '1'
   },
   {
     id: '5',
@@ -60,7 +68,9 @@ const initialTasks: Task[] = [
     date: 'Due Fri',
     time: 'Fri, 9:00 AM',
     category: 'Sales',
-    progress: 45
+    progress: 45,
+    estimationType: 'Days',
+    estimationValue: '2'
   },
   {
     id: '6',
@@ -70,18 +80,45 @@ const initialTasks: Task[] = [
     date: 'Due Sat',
     time: 'Sat, 12:00 PM',
     category: 'Analytics',
-    progress: 10
+    progress: 10,
+    estimationType: 'Hours',
+    estimationValue: '3'
   }
 ];
 
+// Load user preferences
+const loadUserPreferences = () => {
+  try {
+    const storedPrefs = localStorage.getItem('userPreferences');
+    return storedPrefs ? JSON.parse(storedPrefs) : {
+      darkMode: false,
+      animationSpeed: 50,
+      interfaceDensity: 30,
+      showProgressBars: true
+    };
+  } catch (error) {
+    console.error('Error loading preferences:', error);
+    return {
+      darkMode: false,
+      animationSpeed: 50,
+      interfaceDensity: 30,
+      showProgressBars: true
+    };
+  }
+};
+
 const Tasks = () => {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const [completedTasks, setCompletedTasks] = useState<Task[]>([]);
   const [filteredTasks, setFilteredTasks] = useState<Task[]>(initialTasks);
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
   const [sortOption, setSortOption] = useState<string | null>(null);
   const [progressFilter, setProgressFilter] = useState([0, 100]);
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
+  
+  // User preferences
+  const [userPreferences, setUserPreferences] = useState(loadUserPreferences());
   
   // Add smooth loading animation
   const [isLoaded, setIsLoaded] = useState(false);
@@ -92,10 +129,15 @@ const Tasks = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  // Apply dark mode on mount
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', userPreferences.darkMode);
+  }, [userPreferences.darkMode]);
+
   // Handle task reordering
   const handleTasksReorder = (reorderedTasks: Task[]) => {
     setTasks(reorderedTasks);
-    setFilteredTasks(applyFilters(reorderedTasks));
+    setFilteredTasks(applyFilters(reorderedTasks, completedTasks));
     toast({
       title: "Tasks reordered",
       description: "Your task list has been updated.",
@@ -104,31 +146,48 @@ const Tasks = () => {
 
   // Handle task completion
   const handleTaskComplete = (id: string) => {
-    const updatedTasks = tasks.map(task => 
-      task.id === id 
-        ? { ...task, progress: 100, completed: true } 
-        : task
-    );
+    const taskToComplete = tasks.find(task => task.id === id);
     
-    setTasks(updatedTasks);
-    
-    // Remove completed task after a delay
-    setTimeout(() => {
-      const filteredTaskList = updatedTasks.filter(task => task.id !== id);
-      setTasks(filteredTaskList);
-      setFilteredTasks(applyFilters(filteredTaskList));
+    if (taskToComplete) {
+      const updatedTask = { ...taskToComplete, progress: 100, completed: true };
+      
+      // Add to completed tasks
+      setCompletedTasks(prev => [updatedTask, ...prev]);
+      
+      // Remove from tasks
+      setTasks(prev => prev.filter(task => task.id !== id));
+      
+      // Update filtered tasks
+      setFilteredTasks(applyFilters(
+        tasks.filter(task => task.id !== id),
+        [...completedTasks, updatedTask]
+      ));
+      
       toast({
         title: "Task completed",
         description: "Great job! Your task has been marked as complete.",
       });
-    }, 1000);
+    }
   };
 
   // Handle task deletion
   const handleTaskDelete = (id: string) => {
-    const updatedTasks = tasks.filter(task => task.id !== id);
-    setTasks(updatedTasks);
-    setFilteredTasks(applyFilters(updatedTasks));
+    // Check if it's an active task
+    if (tasks.some(task => task.id === id)) {
+      setTasks(prev => prev.filter(task => task.id !== id));
+    }
+    
+    // Check if it's a completed task
+    if (completedTasks.some(task => task.id === id)) {
+      setCompletedTasks(prev => prev.filter(task => task.id !== id));
+    }
+    
+    // Update filtered tasks
+    setFilteredTasks(applyFilters(
+      tasks.filter(task => task.id !== id),
+      completedTasks.filter(task => task.id !== id)
+    ));
+    
     toast({
       title: "Task deleted",
       description: "The task has been removed.",
@@ -137,11 +196,22 @@ const Tasks = () => {
 
   // Handle task update
   const handleTaskUpdate = (updatedTask: Task) => {
-    const updatedTasks = tasks.map(task => 
-      task.id === updatedTask.id ? updatedTask : task
-    );
-    setTasks(updatedTasks);
-    setFilteredTasks(applyFilters(updatedTasks));
+    // Check if it's an active task
+    if (tasks.some(task => task.id === updatedTask.id)) {
+      setTasks(prev => prev.map(task => task.id === updatedTask.id ? updatedTask : task));
+    }
+    
+    // Check if it's a completed task
+    if (completedTasks.some(task => task.id === updatedTask.id)) {
+      setCompletedTasks(prev => prev.map(task => task.id === updatedTask.id ? updatedTask : task));
+    }
+    
+    // Update filtered tasks
+    setFilteredTasks(applyFilters(
+      tasks.map(task => task.id === updatedTask.id ? updatedTask : task),
+      completedTasks.map(task => task.id === updatedTask.id ? updatedTask : task)
+    ));
+    
     toast({
       title: "Task updated",
       description: "Your task has been updated successfully.",
@@ -152,7 +222,7 @@ const Tasks = () => {
   const handleSaveNewTask = (task: Task) => {
     const updatedTasks = [task, ...tasks];
     setTasks(updatedTasks);
-    setFilteredTasks(applyFilters(updatedTasks));
+    setFilteredTasks(applyFilters(updatedTasks, completedTasks));
     toast({
       title: "Task created",
       description: "Your new task has been created successfully.",
@@ -160,8 +230,8 @@ const Tasks = () => {
   };
 
   // Apply search, priority, progress filters and sorting
-  const applyFilters = (taskList: Task[]) => {
-    let result = [...taskList];
+  const applyFilters = (activeTasks: Task[], finishedTasks: Task[]) => {
+    let result = [...activeTasks];
     
     // Apply search filter
     if (searchTerm) {
@@ -204,7 +274,7 @@ const Tasks = () => {
 
   // Update filtered tasks when filters or tasks change
   useEffect(() => {
-    setFilteredTasks(applyFilters(tasks));
+    setFilteredTasks(applyFilters(tasks, completedTasks));
   }, [searchTerm, priorityFilter, sortOption, progressFilter]);
 
   return (
@@ -303,13 +373,17 @@ const Tasks = () => {
           
           <div className="mt-8">
             <h3 className="text-lg font-medium mb-4">All Tasks ({filteredTasks.length})</h3>
-            {filteredTasks.length > 0 ? (
+            {filteredTasks.length > 0 || completedTasks.length > 0 ? (
               <TaskList 
                 tasks={filteredTasks} 
+                completedTasks={completedTasks}
                 onTasksReorder={handleTasksReorder}
                 onTaskComplete={handleTaskComplete}
                 onTaskDelete={handleTaskDelete}
                 onTaskUpdate={handleTaskUpdate}
+                searchTerm={searchTerm}
+                activeFilter={priorityFilter}
+                showProgressBars={userPreferences.showProgressBars}
               />
             ) : (
               <div className="neomorph-inset p-8 text-center rounded-xl">

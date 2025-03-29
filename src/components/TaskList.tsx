@@ -9,27 +9,32 @@ import { toast } from '@/hooks/use-toast';
 
 interface TaskListProps {
   tasks: Task[];
+  completedTasks?: Task[];
   onTasksReorder: (tasks: Task[]) => void;
   onTaskComplete: (id: string) => void;
   onTaskDelete?: (id: string) => void;
   onTaskUpdate?: (updatedTask: Task) => void;
   searchTerm?: string;
   activeFilter?: string | null;
+  showProgressBars?: boolean;
 }
 
 const TaskList: React.FC<TaskListProps> = ({ 
   tasks, 
+  completedTasks = [],
   onTasksReorder, 
   onTaskComplete,
   onTaskDelete,
   onTaskUpdate,
   searchTerm = '',
-  activeFilter = null
+  activeFilter = null,
+  showProgressBars = true
 }) => {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
   const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
@@ -77,29 +82,44 @@ const TaskList: React.FC<TaskListProps> = ({
     return matchesSearch && matchesPriority;
   });
 
+  // Filter completed tasks
+  const filteredCompletedTasks = completedTasks.filter(task => {
+    const matchesSearch = searchTerm 
+      ? task.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        task.description.toLowerCase().includes(searchTerm.toLowerCase())
+      : true;
+    
+    const matchesPriority = activeFilter 
+      ? task.priority === activeFilter 
+      : true;
+    
+    return matchesSearch && matchesPriority;
+  });
+
+  // Priority counts for filters
+  const priorityCounts = {
+    all: tasks.length,
+    high: tasks.filter(t => t.priority === 'high').length,
+    medium: tasks.filter(t => t.priority === 'medium').length,
+    low: tasks.filter(t => t.priority === 'low').length,
+  };
+
   return (
     <div className="w-full">
       <div className="flex justify-between items-center mb-4">
         <div className="flex space-x-2">
-          <PriorityFilter label="All" count={tasks.length} active={activeFilter === null} />
-          <PriorityFilter 
-            label="High Priority" 
-            count={tasks.filter(t => t.priority === 'high').length} 
-            color="bg-destructive/10 text-destructive" 
-            active={activeFilter === 'high'} 
-          />
-          <PriorityFilter 
-            label="Medium Priority" 
-            count={tasks.filter(t => t.priority === 'medium').length} 
-            color="bg-medium/10 text-medium" 
-            active={activeFilter === 'medium'} 
-          />
-          <PriorityFilter 
-            label="Low Priority" 
-            count={tasks.filter(t => t.priority === 'low').length} 
-            color="bg-low/10 text-low" 
-            active={activeFilter === 'low'} 
-          />
+          <div className={`px-3 py-1 text-sm rounded-lg transition-all duration-300 ${activeFilter === null ? 'neomorph-inset font-medium' : ''}`}>
+            All ({priorityCounts.all})
+          </div>
+          <div className={`px-3 py-1 text-sm rounded-lg transition-all duration-300 ${activeFilter === 'high' ? 'neomorph-inset font-medium' : ''} bg-destructive/10 text-destructive`}>
+            High Priority ({priorityCounts.high})
+          </div>
+          <div className={`px-3 py-1 text-sm rounded-lg transition-all duration-300 ${activeFilter === 'medium' ? 'neomorph-inset font-medium' : ''} bg-medium/10 text-medium`}>
+            Medium Priority ({priorityCounts.medium})
+          </div>
+          <div className={`px-3 py-1 text-sm rounded-lg transition-all duration-300 ${activeFilter === 'low' ? 'neomorph-inset font-medium' : ''} bg-low/10 text-low`}>
+            Low Priority ({priorityCounts.low})
+          </div>
         </div>
       </div>
 
@@ -118,7 +138,7 @@ const TaskList: React.FC<TaskListProps> = ({
                       ref={provided.innerRef}
                       {...provided.draggableProps}
                       {...provided.dragHandleProps}
-                      className={`task-container ${snapshot.isDragging ? 'z-10 shadow-[12px_12px_24px_#e6e7f0,-12px_-12px_24px_#ffffff] scale-[1.02]' : ''}`}
+                      className={`task-container ${snapshot.isDragging ? 'task-drag-active' : ''}`}
                     >
                       <TaskCard 
                         task={task} 
@@ -127,6 +147,8 @@ const TaskList: React.FC<TaskListProps> = ({
                         onEdit={() => handleEditTask(task)}
                         onDelete={() => handleDeleteTask(task.id)}
                         onViewDetails={() => handleViewDetails(task)}
+                        showProgressBar={showProgressBars}
+                        isCompleted={false}
                       />
                     </div>
                   )}
@@ -137,6 +159,41 @@ const TaskList: React.FC<TaskListProps> = ({
           )}
         </Droppable>
       </DragDropContext>
+
+      {/* Completed Tasks Section */}
+      {filteredCompletedTasks.length > 0 && (
+        <div className="mt-8">
+          <div 
+            className="flex items-center gap-2 cursor-pointer mb-4" 
+            onClick={() => setShowCompleted(!showCompleted)}
+          >
+            <div className={`w-6 h-6 flex items-center justify-center rounded-full transition-transform ${showCompleted ? 'rotate-90' : ''}`}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium">Completed Tasks ({filteredCompletedTasks.length})</h3>
+          </div>
+          
+          {showCompleted && (
+            <div className="space-y-4 opacity-70">
+              {filteredCompletedTasks.map((task, index) => (
+                <TaskCard 
+                  key={task.id}
+                  task={task} 
+                  index={index}
+                  onComplete={() => {}}
+                  onEdit={() => handleEditTask(task)}
+                  onDelete={() => handleDeleteTask(task.id)}
+                  onViewDetails={() => handleViewDetails(task)}
+                  showProgressBar={showProgressBars}
+                  isCompleted={true}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Edit Task Modal */}
       <TaskModal
@@ -154,25 +211,9 @@ const TaskList: React.FC<TaskListProps> = ({
         onSave={() => setViewDetailsOpen(false)}
         task={viewingTask || undefined}
         title="Task Details"
+        viewOnly={true}
       />
     </div>
-  );
-};
-
-interface PriorityFilterProps {
-  label: string;
-  count: number;
-  active?: boolean;
-  color?: string;
-}
-
-const PriorityFilter: React.FC<PriorityFilterProps> = ({ label, count, active, color }) => {
-  return (
-    <button 
-      className={`px-3 py-1 text-sm rounded-lg transition-all duration-300 ${active ? 'neomorph-inset font-medium' : color || 'hover:neomorph-inset'}`}
-    >
-      {label} ({count})
-    </button>
   );
 };
 
@@ -183,6 +224,8 @@ interface TaskCardProps {
   onEdit: () => void;
   onDelete: () => void;
   onViewDetails: () => void;
+  showProgressBar?: boolean;
+  isCompleted?: boolean;
 }
 
 const TaskCard: React.FC<TaskCardProps> = ({ 
@@ -191,7 +234,9 @@ const TaskCard: React.FC<TaskCardProps> = ({
   onComplete,
   onEdit,
   onDelete,
-  onViewDetails
+  onViewDetails,
+  showProgressBar = true,
+  isCompleted = false
 }) => {
   const getPriorityClass = () => {
     switch (task.priority) {
@@ -204,29 +249,32 @@ const TaskCard: React.FC<TaskCardProps> = ({
 
   return (
     <div 
-      className={`neomorph p-4 ${getPriorityClass()} animate-slide-in`} 
+      className={`neomorph p-4 ${getPriorityClass()} animate-slide-in ${isCompleted ? 'opacity-70' : ''}`} 
       style={{ animationDelay: `${index * 0.1}s` }}
     >
       <div className="flex justify-between items-start">
         <div>
-          <h3 className="font-medium text-lg">{task.title}</h3>
+          <h3 className={`font-medium text-lg ${isCompleted ? 'line-through' : ''}`}>{task.title}</h3>
           <p className="text-muted-foreground text-sm mt-1">{task.description}</p>
         </div>
         <div className="flex space-x-2">
-          <button 
-            onClick={onComplete}
-            className="p-1.5 rounded-full neomorph-btn transition-all hover:text-primary"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-              <polyline points="22 4 12 14.01 9 11.01" />
-            </svg>
-          </button>
+          {!isCompleted && (
+            <button 
+              onClick={onComplete}
+              className="p-1.5 rounded-full neomorph-btn transition-all hover:text-primary"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+            </button>
+          )}
           <TaskMenu
             onEdit={onEdit}
             onDelete={onDelete}
             onComplete={onComplete}
             onViewDetails={onViewDetails}
+            isCompleted={isCompleted}
           />
         </div>
       </div>
@@ -240,9 +288,14 @@ const TaskCard: React.FC<TaskCardProps> = ({
           <Calendar size={14} />
           <span>{task.date}</span>
         </div>
+        {task.estimationType && task.estimationValue && (
+          <div className="flex items-center text-muted-foreground text-xs gap-1">
+            <span>{task.estimationValue} {task.estimationType}</span>
+          </div>
+        )}
       </div>
       
-      {task.progress !== undefined && (
+      {task.progress !== undefined && showProgressBar && (
         <div className="mt-4">
           <div className="flex justify-between text-xs mb-1">
             <span className="text-muted-foreground">{task.category}</span>

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,31 +33,80 @@ interface SettingsState {
   };
 }
 
-const Settings = () => {
-  const [settings, setSettings] = useState<SettingsState>({
-    notifications: {
-      taskReminders: true,
-      weeklySummary: true,
-      productivityTips: false,
-      taskCompletions: true,
-    },
-    appearance: {
+// Load settings from localStorage
+const loadSettings = (): SettingsState => {
+  try {
+    const savedPreferences = localStorage.getItem('userPreferences');
+    const savedSettings = localStorage.getItem('userSettings');
+    
+    const preferences = savedPreferences ? JSON.parse(savedPreferences) : {
       darkMode: false,
       animationSpeed: 50,
       interfaceDensity: 30,
-      showProgressBars: true,
-    },
-    ai: {
-      taskAnalysis: true,
-      smartScheduling: true,
-      productivityInsights: true,
-      assistanceLevel: 60,
-    },
-    account: {
-      twoFactorAuth: false,
-      emailNotifications: true,
-    },
-  });
+      showProgressBars: true
+    };
+    
+    const settings = savedSettings ? JSON.parse(savedSettings) : {
+      notifications: {
+        taskReminders: true,
+        weeklySummary: true,
+        productivityTips: false,
+        taskCompletions: true,
+      },
+      ai: {
+        taskAnalysis: true,
+        smartScheduling: true,
+        productivityInsights: true,
+        assistanceLevel: 60,
+      },
+      account: {
+        twoFactorAuth: false,
+        emailNotifications: true,
+      }
+    };
+    
+    return {
+      notifications: settings.notifications,
+      appearance: preferences,
+      ai: settings.ai,
+      account: settings.account
+    };
+  } catch (error) {
+    console.error('Error loading settings:', error);
+    return {
+      notifications: {
+        taskReminders: true,
+        weeklySummary: true,
+        productivityTips: false,
+        taskCompletions: true,
+      },
+      appearance: {
+        darkMode: false,
+        animationSpeed: 50,
+        interfaceDensity: 30,
+        showProgressBars: true,
+      },
+      ai: {
+        taskAnalysis: true,
+        smartScheduling: true,
+        productivityInsights: true,
+        assistanceLevel: 60,
+      },
+      account: {
+        twoFactorAuth: false,
+        emailNotifications: true,
+      },
+    };
+  }
+};
+
+const Settings = () => {
+  const [settings, setSettings] = useState<SettingsState>(loadSettings());
+
+  // Apply dark mode on component mount and when changed
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', settings.appearance.darkMode);
+  }, [settings.appearance.darkMode]);
 
   // Animation speed label mapping
   const getAnimationSpeedLabel = (value: number) => {
@@ -91,11 +140,6 @@ const Settings = () => {
         [setting]: value
       }
     }));
-
-    // Special case for dark mode
-    if (category === 'appearance' && setting === 'darkMode') {
-      document.documentElement.classList.toggle('dark', value);
-    }
   };
 
   const handleSliderChange = (category: keyof SettingsState, setting: string, value: number[]) => {
@@ -109,6 +153,19 @@ const Settings = () => {
   };
 
   const handleSave = () => {
+    // Save preferences (used by other components)
+    localStorage.setItem('userPreferences', JSON.stringify(settings.appearance));
+    
+    // Save other settings
+    localStorage.setItem('userSettings', JSON.stringify({
+      notifications: settings.notifications,
+      ai: settings.ai,
+      account: settings.account
+    }));
+    
+    // Apply dark mode immediately
+    document.documentElement.classList.toggle('dark', settings.appearance.darkMode);
+    
     toast({
       title: "Settings saved",
       description: "Your preferences have been updated successfully.",
@@ -117,7 +174,7 @@ const Settings = () => {
 
   // Add smooth loading animation
   const [isLoaded, setIsLoaded] = useState(false);
-  React.useEffect(() => {
+  useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoaded(true);
     }, 100);

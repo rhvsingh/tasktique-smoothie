@@ -230,7 +230,7 @@
   /* New animation styles */
   @keyframes scaleIn {
     0% {
-      transform: scale(0.9);
+      transform: scale(0.95);
       opacity: 0;
     }
     100% {
@@ -243,8 +243,27 @@
     animation: scaleIn 0.3s ease-out forwards;
   }
   
+  /* Enhanced drag and drop styling */
   .task-drag-active {
     @apply z-10 shadow-[12px_12px_24px_#e6e7f0,-12px_-12px_24px_#ffffff] scale-[1.02];
     transition: all 0.3s ease;
+  }
+
+  /* Custom slider styling to better indicate range */
+  [data-radix-slider-thumb] {
+    @apply neomorph w-5 h-5 cursor-pointer;
+    transform: translateY(-50%);
+  }
+
+  [data-radix-slider-thumb]:focus {
+    @apply outline-none ring-2 ring-primary ring-offset-2;
+  }
+
+  [data-radix-slider-track] {
+    @apply bg-secondary h-2 relative rounded-full neomorph-inset;
+  }
+
+  [data-radix-slider-range] {
+    @apply absolute bg-primary h-full rounded-full;
   }
 }

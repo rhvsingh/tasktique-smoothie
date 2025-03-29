@@ -13,6 +13,7 @@ interface TaskMenuProps {
   onDelete: () => void;
   onComplete: () => void;
   onViewDetails: () => void;
+  isCompleted?: boolean;
 }
 
 const TaskMenu: React.FC<TaskMenuProps> = ({
@@ -20,6 +21,7 @@ const TaskMenu: React.FC<TaskMenuProps> = ({
   onDelete,
   onComplete,
   onViewDetails,
+  isCompleted = false,
 }) => {
   return (
     <DropdownMenu>
@@ -35,10 +37,12 @@ const TaskMenu: React.FC<TaskMenuProps> = ({
           <Edit size={16} />
           <span>Edit Task</span>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={onComplete} className="cursor-pointer flex items-center gap-2">
-          <CheckCircle size={16} />
-          <span>Mark as Complete</span>
-        </DropdownMenuItem>
+        {!isCompleted && (
+          <DropdownMenuItem onClick={onComplete} className="cursor-pointer flex items-center gap-2">
+            <CheckCircle size={16} />
+            <span>Mark as Complete</span>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onClick={onViewDetails} className="cursor-pointer flex items-center gap-2">
           <Info size={16} />
           <span>View Details</span>

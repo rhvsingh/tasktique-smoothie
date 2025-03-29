@@ -19,7 +19,9 @@ const initialTasks: Task[] = [
     date: 'Due Today',
     time: 'Today, 2:00 PM',
     category: 'Work',
-    progress: 70
+    progress: 70,
+    estimationType: 'Days',
+    estimationValue: '3'
   },
   {
     id: '2',
@@ -29,7 +31,9 @@ const initialTasks: Task[] = [
     date: 'Due Tomorrow',
     time: 'Tomorrow, 10:00 AM',
     category: 'Work',
-    progress: 30
+    progress: 30,
+    estimationType: 'Hours',
+    estimationValue: '2'
   },
   {
     id: '3',
@@ -39,7 +43,9 @@ const initialTasks: Task[] = [
     date: 'Due Wed',
     time: 'Wed, 11:00 AM',
     category: 'Work',
-    progress: 0
+    progress: 0,
+    estimationType: 'Minutes',
+    estimationValue: '45'
   },
   {
     id: '4',
@@ -49,18 +55,43 @@ const initialTasks: Task[] = [
     date: 'Due Thu',
     time: 'Thu, 3:00 PM',
     category: 'Marketing',
-    progress: 15
+    progress: 15,
+    estimationType: 'Hours',
+    estimationValue: '1'
   }
 ];
+
+// Load user preferences
+const loadUserPreferences = () => {
+  try {
+    const storedPrefs = localStorage.getItem('userPreferences');
+    return storedPrefs ? JSON.parse(storedPrefs) : {
+      darkMode: false,
+      animationSpeed: 50,
+      interfaceDensity: 30,
+      showProgressBars: true
+    };
+  } catch (error) {
+    console.error('Error loading preferences:', error);
+    return {
+      darkMode: false,
+      animationSpeed: 50,
+      interfaceDensity: 30,
+      showProgressBars: true
+    };
+  }
+};
 
 const Index = () => {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [completedTasks, setCompletedTasks] = useState<Task[]>([]);
-  const [showCompleted, setShowCompleted] = useState(false);
-  const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
-
+  const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
+  
+  // User preferences
+  const [userPreferences, setUserPreferences] = useState(loadUserPreferences());
+  
   // Simulate animated page load to reduce jumpiness
   const [isLoaded, setIsLoaded] = useState(false);
   useEffect(() => {
@@ -69,6 +100,11 @@ const Index = () => {
     }, 100);
     return () => clearTimeout(timer);
   }, []);
+
+  // Apply dark mode on mount
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', userPreferences.darkMode);
+  }, [userPreferences.darkMode]);
 
   const handleAddTask = (taskText: string) => {
     // Generate random priority
@@ -88,7 +124,20 @@ const Index = () => {
         ? 'Due Tomorrow' 
         : `Due ${daysOfWeek[dueDate.getDay()]}`;
     
-    // Create subtasks by breaking the main task into parts
+    // Generate random estimation
+    const estimationTypes = ['Minutes', 'Hours', 'Days'];
+    const randomEstimationType = estimationTypes[Math.floor(Math.random() * estimationTypes.length)];
+    let randomEstimationValue = '1';
+    
+    if (randomEstimationType === 'Minutes') {
+      randomEstimationValue = String(Math.floor(Math.random() * 55) + 5);
+    } else if (randomEstimationType === 'Hours') {
+      randomEstimationValue = String(Math.floor(Math.random() * 8) + 1);
+    } else {
+      randomEstimationValue = String(Math.floor(Math.random() * 5) + 1);
+    }
+    
+    // Create new task
     const newTask: Task = {
       id: Date.now().toString(),
       title: taskText.split(' ').slice(0, 5).join(' ') + (taskText.split(' ').length > 5 ? '...' : ''),
@@ -97,7 +146,9 @@ const Index = () => {
       date: dateStr,
       time: `${randomDays === 0 ? 'Today' : randomDays === 1 ? 'Tomorrow' : daysOfWeek[dueDate.getDay()]}, ${Math.floor(Math.random() * 12) + 1}:00 ${Math.random() > 0.5 ? 'AM' : 'PM'}`,
       category: Math.random() > 0.5 ? 'Work' : 'Personal',
-      progress: 0
+      progress: 0,
+      estimationType: randomEstimationType,
+      estimationValue: randomEstimationValue
     };
     
     setTasks([newTask, ...tasks]);
@@ -122,24 +173,27 @@ const Index = () => {
       const updatedCompletedTask = { ...completedTask, progress: 100, completed: true };
       setCompletedTasks([updatedCompletedTask, ...completedTasks]);
       
-      setTasks(tasks.map(task => 
-        task.id === id ? updatedCompletedTask : task
-      ));
+      // Remove from active tasks
+      setTasks(tasks.filter(task => task.id !== id));
       
-      // Remove from active tasks after animation
-      setTimeout(() => {
-        setTasks(tasks.filter(task => task.id !== id));
-        toast({
-          title: "Task completed",
-          description: "Great job! Your task has been marked as complete.",
-        });
-      }, 1000);
+      toast({
+        title: "Task completed",
+        description: "Great job! Your task has been marked as complete.",
+      });
     }
   };
 
   const handleTaskDelete = (id: string) => {
-    setTasks(tasks.filter(task => task.id !== id));
-    setCompletedTasks(completedTasks.filter(task => task.id !== id));
+    // Check if in active tasks
+    if (tasks.some(task => task.id === id)) {
+      setTasks(tasks.filter(task => task.id !== id));
+    }
+    
+    // Check if in completed tasks
+    if (completedTasks.some(task => task.id === id)) {
+      setCompletedTasks(completedTasks.filter(task => task.id !== id));
+    }
+    
     toast({
       title: "Task deleted",
       description: "The task has been removed.",
@@ -147,7 +201,16 @@ const Index = () => {
   };
 
   const handleTaskUpdate = (updatedTask: Task) => {
-    setTasks(tasks.map(task => task.id === updatedTask.id ? updatedTask : task));
+    // Check if it's an active task
+    if (tasks.some(task => task.id === updatedTask.id)) {
+      setTasks(tasks.map(task => task.id === updatedTask.id ? updatedTask : task));
+    }
+    
+    // Check if it's a completed task
+    if (completedTasks.some(task => task.id === updatedTask.id)) {
+      setCompletedTasks(completedTasks.map(task => task.id === updatedTask.id ? updatedTask : task));
+    }
+    
     toast({
       title: "Task updated",
       description: "Your task has been updated successfully.",
@@ -165,6 +228,20 @@ const Index = () => {
   const handlePriorityFilter = (priority: string | null) => {
     setPriorityFilter(priority);
   };
+
+  // Filter tasks based on search and priority filter
+  const filteredTasks = tasks.filter(task => {
+    const matchesSearch = searchTerm 
+      ? task.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        task.description.toLowerCase().includes(searchTerm.toLowerCase())
+      : true;
+    
+    const matchesPriority = priorityFilter 
+      ? task.priority === priorityFilter 
+      : true;
+    
+    return matchesSearch && matchesPriority;
+  });
 
   return (
     <div className={`min-h-screen bg-background py-8 px-4 md:px-8 transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}>
@@ -209,7 +286,7 @@ const Index = () => {
                 className={`${priorityFilter === null ? 'neomorph-inset' : 'neomorph-btn'}`}
                 onClick={() => handlePriorityFilter(null)}
               >
-                All
+                All ({tasks.length})
               </Button>
               <Button 
                 variant="outline" 
@@ -217,7 +294,7 @@ const Index = () => {
                 className={`${priorityFilter === 'high' ? 'neomorph-inset' : 'neomorph-btn'} text-destructive`}
                 onClick={() => handlePriorityFilter('high')}
               >
-                High Priority
+                High Priority ({tasks.filter(t => t.priority === 'high').length})
               </Button>
               <Button 
                 variant="outline" 
@@ -225,7 +302,7 @@ const Index = () => {
                 className={`${priorityFilter === 'medium' ? 'neomorph-inset' : 'neomorph-btn'} text-medium`}
                 onClick={() => handlePriorityFilter('medium')}
               >
-                Medium Priority
+                Medium Priority ({tasks.filter(t => t.priority === 'medium').length})
               </Button>
               <Button 
                 variant="outline" 
@@ -233,60 +310,22 @@ const Index = () => {
                 className={`${priorityFilter === 'low' ? 'neomorph-inset' : 'neomorph-btn'} text-low`}
                 onClick={() => handlePriorityFilter('low')}
               >
-                Low Priority
+                Low Priority ({tasks.filter(t => t.priority === 'low').length})
               </Button>
             </div>
           </div>
           
           <TaskList 
-            tasks={tasks}
+            tasks={filteredTasks}
+            completedTasks={completedTasks}
             onTasksReorder={handleTasksReorder}
             onTaskComplete={handleTaskComplete}
             onTaskDelete={handleTaskDelete}
             onTaskUpdate={handleTaskUpdate}
             searchTerm={searchTerm}
             activeFilter={priorityFilter}
+            showProgressBars={userPreferences.showProgressBars}
           />
-          
-          {/* Completed Tasks Section */}
-          <div className="mt-8">
-            <div 
-              className="flex items-center gap-2 cursor-pointer" 
-              onClick={() => setShowCompleted(!showCompleted)}
-            >
-              <div className={`w-6 h-6 flex items-center justify-center rounded-full transition-transform ${showCompleted ? 'rotate-90' : ''}`}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
-              </div>
-              <h3 className="text-lg font-medium">Completed Tasks ({completedTasks.length})</h3>
-            </div>
-            
-            {showCompleted && completedTasks.length > 0 && (
-              <div className="mt-4 space-y-4 opacity-60">
-                {completedTasks.map((task, index) => (
-                  <div key={task.id} className="neomorph p-4 opacity-70">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-medium text-lg line-through">{task.title}</h3>
-                        <p className="text-muted-foreground text-sm mt-1">{task.description}</p>
-                      </div>
-                      <button 
-                        onClick={() => handleTaskDelete(task.id)} 
-                        className="p-1.5 rounded-full neomorph-btn"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M3 6h18"></path>
-                          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       </div>
       

@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { Calendar, Clock, Flag, Briefcase } from 'lucide-react';
+import { Calendar, Clock, Flag } from 'lucide-react';
 import { Task } from '@/types';
 import { toast } from '@/hooks/use-toast';
 
@@ -19,6 +19,7 @@ interface TaskModalProps {
   onSave: (task: Task) => void;
   task?: Task;
   title?: string;
+  viewOnly?: boolean;
 }
 
 const TaskModal: React.FC<TaskModalProps> = ({ 
@@ -26,7 +27,8 @@ const TaskModal: React.FC<TaskModalProps> = ({
   onClose, 
   onSave, 
   task, 
-  title = 'Edit Task' 
+  title = 'Edit Task',
+  viewOnly = false
 }) => {
   const [taskData, setTaskData] = useState<Task>({
     id: '',
@@ -36,13 +38,19 @@ const TaskModal: React.FC<TaskModalProps> = ({
     date: 'Due Today',
     time: 'Today, 2:00 PM',
     category: 'Work',
-    progress: 0
+    progress: 0,
+    estimationType: 'Hours',
+    estimationValue: '1'
   });
 
   // Initialize form with task data when editing
   useEffect(() => {
     if (task) {
-      setTaskData({ ...task });
+      setTaskData({ 
+        ...task,
+        estimationType: task.estimationType || 'Hours',
+        estimationValue: task.estimationValue || '1'
+      });
     } else {
       // Reset to defaults for new task
       setTaskData({
@@ -53,7 +61,9 @@ const TaskModal: React.FC<TaskModalProps> = ({
         date: 'Due Today',
         time: 'Today, 2:00 PM',
         category: 'Work',
-        progress: 0
+        progress: 0,
+        estimationType: 'Hours',
+        estimationValue: '1'
       });
     }
   }, [task, isOpen]);
@@ -100,6 +110,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
               onChange={handleChange}
               className="w-full p-3 neomorph-inset rounded-lg"
               placeholder="Enter task title"
+              readOnly={viewOnly}
             />
           </div>
           
@@ -112,6 +123,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
               onChange={handleChange}
               className="w-full p-3 neomorph-inset rounded-lg min-h-[80px]"
               placeholder="Enter task description"
+              readOnly={viewOnly}
             />
           </div>
           
@@ -126,6 +138,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                 value={taskData.priority}
                 onChange={handleChange}
                 className="w-full p-3 neomorph-inset rounded-lg"
+                disabled={viewOnly}
               >
                 <option value="high">High</option>
                 <option value="medium">Medium</option>
@@ -135,21 +148,30 @@ const TaskModal: React.FC<TaskModalProps> = ({
             
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-1">
-                <Briefcase size={14} />
-                Category
+                Estimation
               </label>
-              <select
-                name="category"
-                value={taskData.category}
-                onChange={handleChange}
-                className="w-full p-3 neomorph-inset rounded-lg"
-              >
-                <option value="Work">Work</option>
-                <option value="Personal">Personal</option>
-                <option value="Marketing">Marketing</option>
-                <option value="Analytics">Analytics</option>
-                <option value="Sales">Sales</option>
-              </select>
+              <div className="flex gap-2">
+                <select
+                  name="estimationType"
+                  value={taskData.estimationType}
+                  onChange={handleChange}
+                  className="w-1/2 p-3 neomorph-inset rounded-lg"
+                  disabled={viewOnly}
+                >
+                  <option value="Minutes">Minutes</option>
+                  <option value="Hours">Hours</option>
+                  <option value="Days">Days</option>
+                </select>
+                <input
+                  type="text"
+                  name="estimationValue"
+                  value={taskData.estimationValue}
+                  onChange={handleChange}
+                  className="w-1/2 p-3 neomorph-inset rounded-lg"
+                  placeholder="Value"
+                  readOnly={viewOnly}
+                />
+              </div>
             </div>
           </div>
           
@@ -166,6 +188,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                 onChange={handleChange}
                 className="w-full p-3 neomorph-inset rounded-lg"
                 placeholder="Due date"
+                readOnly={viewOnly}
               />
             </div>
             
@@ -181,6 +204,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                 onChange={handleChange}
                 className="w-full p-3 neomorph-inset rounded-lg"
                 placeholder="Time"
+                readOnly={viewOnly}
               />
             </div>
           </div>
@@ -193,10 +217,11 @@ const TaskModal: React.FC<TaskModalProps> = ({
             <Slider
               defaultValue={[taskData.progress]}
               value={[taskData.progress]}
-              onValueChange={handleProgressChange}
+              onValueChange={viewOnly ? () => {} : handleProgressChange}
               max={100}
               step={5}
               className="my-4"
+              disabled={viewOnly}
             />
           </div>
           
@@ -207,14 +232,16 @@ const TaskModal: React.FC<TaskModalProps> = ({
               onClick={onClose}
               className="neomorph-btn"
             >
-              Cancel
+              {viewOnly ? "Close" : "Cancel"}
             </Button>
-            <Button 
-              type="submit" 
-              className="neomorph-primary"
-            >
-              Save Task
-            </Button>
+            {!viewOnly && (
+              <Button 
+                type="submit" 
+                className="neomorph-primary"
+              >
+                Save Task
+              </Button>
+            )}
           </DialogFooter>
         </form>
       </DialogContent>
