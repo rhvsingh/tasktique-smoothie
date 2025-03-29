@@ -125,7 +125,7 @@ const Index = () => {
         : `Due ${daysOfWeek[dueDate.getDay()]}`;
     
     // Generate random estimation
-    const estimationTypes = ['Minutes', 'Hours', 'Days'];
+    const estimationTypes: Array<'Minutes' | 'Hours' | 'Days'> = ['Minutes', 'Hours', 'Days'];
     const randomEstimationType = estimationTypes[Math.floor(Math.random() * estimationTypes.length)];
     let randomEstimationValue = '1';
     
