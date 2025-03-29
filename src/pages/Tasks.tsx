@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import TaskList from '@/components/TaskList';
+import TaskModal from '@/components/TaskModal';
 import { Task } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -80,6 +81,16 @@ const Tasks = () => {
   const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
   const [sortOption, setSortOption] = useState<string | null>(null);
   const [progressFilter, setProgressFilter] = useState([0, 100]);
+  const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
+  
+  // Add smooth loading animation
+  const [isLoaded, setIsLoaded] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoaded(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Handle task reordering
   const handleTasksReorder = (reorderedTasks: Task[]) => {
@@ -113,6 +124,41 @@ const Tasks = () => {
     }, 1000);
   };
 
+  // Handle task deletion
+  const handleTaskDelete = (id: string) => {
+    const updatedTasks = tasks.filter(task => task.id !== id);
+    setTasks(updatedTasks);
+    setFilteredTasks(applyFilters(updatedTasks));
+    toast({
+      title: "Task deleted",
+      description: "The task has been removed.",
+    });
+  };
+
+  // Handle task update
+  const handleTaskUpdate = (updatedTask: Task) => {
+    const updatedTasks = tasks.map(task => 
+      task.id === updatedTask.id ? updatedTask : task
+    );
+    setTasks(updatedTasks);
+    setFilteredTasks(applyFilters(updatedTasks));
+    toast({
+      title: "Task updated",
+      description: "Your task has been updated successfully.",
+    });
+  };
+
+  // Handle creating a new task
+  const handleSaveNewTask = (task: Task) => {
+    const updatedTasks = [task, ...tasks];
+    setTasks(updatedTasks);
+    setFilteredTasks(applyFilters(updatedTasks));
+    toast({
+      title: "Task created",
+      description: "Your new task has been created successfully.",
+    });
+  };
+
   // Apply search, priority, progress filters and sorting
   const applyFilters = (taskList: Task[]) => {
     let result = [...taskList];
@@ -140,7 +186,7 @@ const Tasks = () => {
     if (sortOption) {
       switch (sortOption) {
         case 'priority':
-          const priorityOrder = { high: 1, medium: 2, low: 3 };
+          const priorityOrder: Record<string, number> = { high: 1, medium: 2, low: 3 };
           result.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
           break;
         case 'progress':
@@ -162,15 +208,15 @@ const Tasks = () => {
   }, [searchTerm, priorityFilter, sortOption, progressFilter]);
 
   return (
-    <div className="min-h-screen bg-background py-8 px-4 md:px-8">
+    <div className={`min-h-screen bg-background py-8 px-4 md:px-8 transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}>
       <div className="max-w-6xl mx-auto">
         <Header />
         
         <div className="neomorph p-6 mb-6 animate-slide-in" style={{ animationDelay: '0.2s' }}>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <h2 className="text-xl font-bold">Task Management</h2>
-            <div className="flex gap-2">
-              <div className="relative">
+            <div className="flex gap-2 w-full md:w-auto">
+              <div className="relative flex-1 md:flex-none">
                 <input
                   type="text"
                   placeholder="Search tasks..."
@@ -180,7 +226,11 @@ const Tasks = () => {
                 />
                 <Search className="absolute left-3 top-2.5 text-muted-foreground" size={16} />
               </div>
-              <Button variant="outline" className="neomorph-btn p-2 h-auto">
+              <Button 
+                variant="outline" 
+                className="neomorph-btn p-2 h-auto"
+                onClick={() => setIsAddTaskModalOpen(true)}
+              >
                 <Plus size={20} />
                 <span className="hidden md:inline ml-1">Add Task</span>
               </Button>
@@ -242,7 +292,7 @@ const Tasks = () => {
               </div>
               <Slider 
                 className="py-4" 
-                defaultValue={[0, 100]} 
+                min={0}
                 max={100} 
                 step={5}
                 value={progressFilter}
@@ -258,6 +308,8 @@ const Tasks = () => {
                 tasks={filteredTasks} 
                 onTasksReorder={handleTasksReorder}
                 onTaskComplete={handleTaskComplete}
+                onTaskDelete={handleTaskDelete}
+                onTaskUpdate={handleTaskUpdate}
               />
             ) : (
               <div className="neomorph-inset p-8 text-center rounded-xl">
@@ -267,6 +319,14 @@ const Tasks = () => {
           </div>
         </div>
       </div>
+
+      {/* Add Task Modal */}
+      <TaskModal
+        isOpen={isAddTaskModalOpen}
+        onClose={() => setIsAddTaskModalOpen(false)}
+        onSave={handleSaveNewTask}
+        title="Add New Task"
+      />
     </div>
   );
 };

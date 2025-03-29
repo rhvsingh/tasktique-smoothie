@@ -1,16 +1,36 @@
 
-import React from 'react';
-import { Clock, Calendar, MoreHorizontal, CheckCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Clock, Calendar } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { Task } from '@/types';
+import TaskMenu from './TaskMenu';
+import TaskModal from './TaskModal';
+import { toast } from '@/hooks/use-toast';
 
 interface TaskListProps {
   tasks: Task[];
   onTasksReorder: (tasks: Task[]) => void;
   onTaskComplete: (id: string) => void;
+  onTaskDelete?: (id: string) => void;
+  onTaskUpdate?: (updatedTask: Task) => void;
+  searchTerm?: string;
+  activeFilter?: string | null;
 }
 
-const TaskList: React.FC<TaskListProps> = ({ tasks, onTasksReorder, onTaskComplete }) => {
+const TaskList: React.FC<TaskListProps> = ({ 
+  tasks, 
+  onTasksReorder, 
+  onTaskComplete,
+  onTaskDelete,
+  onTaskUpdate,
+  searchTerm = '',
+  activeFilter = null
+}) => {
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [viewingTask, setViewingTask] = useState<Task | null>(null);
+  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
+
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
     
@@ -21,27 +41,65 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, onTasksReorder, onTaskComple
     onTasksReorder(items);
   };
 
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteTask = (id: string) => {
+    if (onTaskDelete) {
+      onTaskDelete(id);
+    }
+  };
+
+  const handleViewDetails = (task: Task) => {
+    setViewingTask(task);
+    setViewDetailsOpen(true);
+  };
+
+  const handleSaveTask = (updatedTask: Task) => {
+    if (onTaskUpdate) {
+      onTaskUpdate(updatedTask);
+    }
+  };
+
+  // Filter tasks based on search term and active filter
+  const filteredTasks = tasks.filter(task => {
+    const matchesSearch = searchTerm 
+      ? task.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        task.description.toLowerCase().includes(searchTerm.toLowerCase())
+      : true;
+    
+    const matchesPriority = activeFilter 
+      ? task.priority === activeFilter 
+      : true;
+    
+    return matchesSearch && matchesPriority;
+  });
+
   return (
     <div className="w-full">
       <div className="flex justify-between items-center mb-4">
         <div className="flex space-x-2">
-          <PriorityFilter label="All" count={tasks.length} active />
-          <PriorityFilter label="High Priority" count={tasks.filter(t => t.priority === 'high').length} color="bg-destructive/10 text-destructive" />
-          <PriorityFilter label="Medium Priority" count={tasks.filter(t => t.priority === 'medium').length} color="bg-medium/10 text-medium" />
-          <PriorityFilter label="Low Priority" count={tasks.filter(t => t.priority === 'low').length} color="bg-low/10 text-low" />
-        </div>
-        <div className="relative neomorph-inset p-1 pl-8 pr-2 rounded-full">
-          <input
-            type="text"
-            placeholder="Search tasks..."
-            className="bg-transparent border-none focus:outline-none text-sm w-40"
+          <PriorityFilter label="All" count={tasks.length} active={activeFilter === null} />
+          <PriorityFilter 
+            label="High Priority" 
+            count={tasks.filter(t => t.priority === 'high').length} 
+            color="bg-destructive/10 text-destructive" 
+            active={activeFilter === 'high'} 
           />
-          <span className="absolute left-3 top-1/2 transform -translate-y-1/2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground">
-              <circle cx="11" cy="11" r="8"></circle>
-              <path d="m21 21-4.3-4.3"></path>
-            </svg>
-          </span>
+          <PriorityFilter 
+            label="Medium Priority" 
+            count={tasks.filter(t => t.priority === 'medium').length} 
+            color="bg-medium/10 text-medium" 
+            active={activeFilter === 'medium'} 
+          />
+          <PriorityFilter 
+            label="Low Priority" 
+            count={tasks.filter(t => t.priority === 'low').length} 
+            color="bg-low/10 text-low" 
+            active={activeFilter === 'low'} 
+          />
         </div>
       </div>
 
@@ -53,19 +111,22 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, onTasksReorder, onTaskComple
               ref={provided.innerRef}
               className="space-y-4"
             >
-              {tasks.map((task, index) => (
+              {filteredTasks.map((task, index) => (
                 <Draggable key={task.id} draggableId={task.id} index={index}>
-                  {(provided) => (
+                  {(provided, snapshot) => (
                     <div
                       ref={provided.innerRef}
                       {...provided.draggableProps}
                       {...provided.dragHandleProps}
-                      className="task-container"
+                      className={`task-container ${snapshot.isDragging ? 'z-10 shadow-[12px_12px_24px_#e6e7f0,-12px_-12px_24px_#ffffff] scale-[1.02]' : ''}`}
                     >
                       <TaskCard 
                         task={task} 
                         index={index}
                         onComplete={() => onTaskComplete(task.id)}
+                        onEdit={() => handleEditTask(task)}
+                        onDelete={() => handleDeleteTask(task.id)}
+                        onViewDetails={() => handleViewDetails(task)}
                       />
                     </div>
                   )}
@@ -76,6 +137,24 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, onTasksReorder, onTaskComple
           )}
         </Droppable>
       </DragDropContext>
+
+      {/* Edit Task Modal */}
+      <TaskModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSaveTask}
+        task={editingTask || undefined}
+        title="Edit Task"
+      />
+
+      {/* View Task Details Modal */}
+      <TaskModal
+        isOpen={viewDetailsOpen}
+        onClose={() => setViewDetailsOpen(false)}
+        onSave={() => setViewDetailsOpen(false)}
+        task={viewingTask || undefined}
+        title="Task Details"
+      />
     </div>
   );
 };
@@ -101,9 +180,19 @@ interface TaskCardProps {
   task: Task;
   index: number;
   onComplete: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onViewDetails: () => void;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, index, onComplete }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ 
+  task, 
+  index, 
+  onComplete,
+  onEdit,
+  onDelete,
+  onViewDetails
+}) => {
   const getPriorityClass = () => {
     switch (task.priority) {
       case 'high': return 'priority-high';
@@ -128,11 +217,17 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, index, onComplete }) => {
             onClick={onComplete}
             className="p-1.5 rounded-full neomorph-btn transition-all hover:text-primary"
           >
-            <CheckCircle size={18} />
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
           </button>
-          <button className="p-1.5 rounded-full neomorph-btn">
-            <MoreHorizontal size={18} />
-          </button>
+          <TaskMenu
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onComplete={onComplete}
+            onViewDetails={onViewDetails}
+          />
         </div>
       </div>
       

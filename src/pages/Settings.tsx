@@ -1,14 +1,113 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import Header from '@/components/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
-import { BellRing, User, Moon, Bell, Globe, Shield, Zap, Palette } from 'lucide-react';
+import { User, Moon, Bell, Palette, Zap, Shield } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
+interface SettingsState {
+  notifications: {
+    taskReminders: boolean;
+    weeklySummary: boolean;
+    productivityTips: boolean;
+    taskCompletions: boolean;
+  };
+  appearance: {
+    darkMode: boolean;
+    animationSpeed: number;
+    interfaceDensity: number;
+    showProgressBars: boolean;
+  };
+  ai: {
+    taskAnalysis: boolean;
+    smartScheduling: boolean;
+    productivityInsights: boolean;
+    assistanceLevel: number;
+  };
+  account: {
+    twoFactorAuth: boolean;
+    emailNotifications: boolean;
+  };
+}
+
 const Settings = () => {
+  const [settings, setSettings] = useState<SettingsState>({
+    notifications: {
+      taskReminders: true,
+      weeklySummary: true,
+      productivityTips: false,
+      taskCompletions: true,
+    },
+    appearance: {
+      darkMode: false,
+      animationSpeed: 50,
+      interfaceDensity: 30,
+      showProgressBars: true,
+    },
+    ai: {
+      taskAnalysis: true,
+      smartScheduling: true,
+      productivityInsights: true,
+      assistanceLevel: 60,
+    },
+    account: {
+      twoFactorAuth: false,
+      emailNotifications: true,
+    },
+  });
+
+  // Animation speed label mapping
+  const getAnimationSpeedLabel = (value: number) => {
+    if (value <= 25) return 'Slow';
+    if (value <= 50) return 'Normal';
+    if (value <= 75) return 'Fast';
+    return 'Very Fast';
+  };
+
+  // Interface density label mapping
+  const getInterfaceDensityLabel = (value: number) => {
+    if (value <= 25) return 'Compact';
+    if (value <= 50) return 'Comfortable';
+    if (value <= 75) return 'Spacious';
+    return 'Very Spacious';
+  };
+
+  // AI assistance level label mapping
+  const getAIAssistanceLevelLabel = (value: number) => {
+    if (value <= 25) return 'Minimal';
+    if (value <= 50) return 'Moderate';
+    if (value <= 75) return 'Balanced';
+    return 'Proactive';
+  };
+
+  const handleSwitchChange = (category: keyof SettingsState, setting: string, value: boolean) => {
+    setSettings(prev => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        [setting]: value
+      }
+    }));
+
+    // Special case for dark mode
+    if (category === 'appearance' && setting === 'darkMode') {
+      document.documentElement.classList.toggle('dark', value);
+    }
+  };
+
+  const handleSliderChange = (category: keyof SettingsState, setting: string, value: number[]) => {
+    setSettings(prev => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        [setting]: value[0]
+      }
+    }));
+  };
+
   const handleSave = () => {
     toast({
       title: "Settings saved",
@@ -16,8 +115,17 @@ const Settings = () => {
     });
   };
 
+  // Add smooth loading animation
+  const [isLoaded, setIsLoaded] = useState(false);
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoaded(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-background py-8 px-4 md:px-8">
+    <div className={`min-h-screen bg-background py-8 px-4 md:px-8 transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}>
       <div className="max-w-6xl mx-auto">
         <Header />
         
@@ -48,22 +156,42 @@ const Settings = () => {
                 <SettingItem
                   title="Task Reminders"
                   description="Receive notifications for upcoming tasks"
-                  control={<Switch defaultChecked />}
+                  control={
+                    <Switch 
+                      checked={settings.notifications.taskReminders}
+                      onCheckedChange={(value) => handleSwitchChange('notifications', 'taskReminders', value)}
+                    />
+                  }
                 />
                 <SettingItem
                   title="Weekly Summary"
                   description="Get a weekly email with your productivity stats"
-                  control={<Switch defaultChecked />}
+                  control={
+                    <Switch 
+                      checked={settings.notifications.weeklySummary}
+                      onCheckedChange={(value) => handleSwitchChange('notifications', 'weeklySummary', value)}
+                    />
+                  }
                 />
                 <SettingItem
                   title="Productivity Tips"
                   description="Receive AI-powered productivity tips"
-                  control={<Switch />}
+                  control={
+                    <Switch 
+                      checked={settings.notifications.productivityTips}
+                      onCheckedChange={(value) => handleSwitchChange('notifications', 'productivityTips', value)}
+                    />
+                  }
                 />
                 <SettingItem
                   title="Task Completions"
                   description="Notify when a team member completes a task"
-                  control={<Switch defaultChecked />}
+                  control={
+                    <Switch 
+                      checked={settings.notifications.taskCompletions}
+                      onCheckedChange={(value) => handleSwitchChange('notifications', 'taskCompletions', value)}
+                    />
+                  }
                 />
               </CardContent>
             </Card>
@@ -80,7 +208,12 @@ const Settings = () => {
                 <SettingItem
                   title="Dark Mode"
                   description="Enable dark mode for low-light environments"
-                  control={<Switch />}
+                  control={
+                    <Switch 
+                      checked={settings.appearance.darkMode}
+                      onCheckedChange={(value) => handleSwitchChange('appearance', 'darkMode', value)}
+                    />
+                  }
                 />
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -88,9 +221,15 @@ const Settings = () => {
                       <h4 className="text-sm font-medium">Animation Speed</h4>
                       <p className="text-xs text-muted-foreground">Control the speed of UI animations</p>
                     </div>
-                    <span className="text-xs font-medium">Normal</span>
+                    <span className="text-xs font-medium">{getAnimationSpeedLabel(settings.appearance.animationSpeed)}</span>
                   </div>
-                  <Slider defaultValue={[50]} max={100} step={10} />
+                  <Slider 
+                    min={0}
+                    max={100} 
+                    step={10} 
+                    value={[settings.appearance.animationSpeed]}
+                    onValueChange={(value) => handleSliderChange('appearance', 'animationSpeed', value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -98,14 +237,25 @@ const Settings = () => {
                       <h4 className="text-sm font-medium">Interface Density</h4>
                       <p className="text-xs text-muted-foreground">Adjust the compactness of the interface</p>
                     </div>
-                    <span className="text-xs font-medium">Comfortable</span>
+                    <span className="text-xs font-medium">{getInterfaceDensityLabel(settings.appearance.interfaceDensity)}</span>
                   </div>
-                  <Slider defaultValue={[30]} max={100} step={10} />
+                  <Slider 
+                    min={0}
+                    max={100} 
+                    step={10} 
+                    value={[settings.appearance.interfaceDensity]}
+                    onValueChange={(value) => handleSliderChange('appearance', 'interfaceDensity', value)}
+                  />
                 </div>
                 <SettingItem
                   title="Show Task Progress Bars"
                   description="Display progress indicators for each task"
-                  control={<Switch defaultChecked />}
+                  control={
+                    <Switch 
+                      checked={settings.appearance.showProgressBars}
+                      onCheckedChange={(value) => handleSwitchChange('appearance', 'showProgressBars', value)}
+                    />
+                  }
                 />
               </CardContent>
             </Card>
@@ -122,17 +272,32 @@ const Settings = () => {
                 <SettingItem
                   title="Task Analysis"
                   description="Allow AI to analyze and suggest task priorities"
-                  control={<Switch defaultChecked />}
+                  control={
+                    <Switch 
+                      checked={settings.ai.taskAnalysis}
+                      onCheckedChange={(value) => handleSwitchChange('ai', 'taskAnalysis', value)}
+                    />
+                  }
                 />
                 <SettingItem
                   title="Smart Scheduling"
                   description="Let AI optimize your daily schedule"
-                  control={<Switch defaultChecked />}
+                  control={
+                    <Switch 
+                      checked={settings.ai.smartScheduling}
+                      onCheckedChange={(value) => handleSwitchChange('ai', 'smartScheduling', value)}
+                    />
+                  }
                 />
                 <SettingItem
                   title="Productivity Insights"
                   description="Generate personalized productivity insights"
-                  control={<Switch defaultChecked />}
+                  control={
+                    <Switch 
+                      checked={settings.ai.productivityInsights}
+                      onCheckedChange={(value) => handleSwitchChange('ai', 'productivityInsights', value)}
+                    />
+                  }
                 />
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -140,9 +305,15 @@ const Settings = () => {
                       <h4 className="text-sm font-medium">AI Assistance Level</h4>
                       <p className="text-xs text-muted-foreground">How proactive should the AI be?</p>
                     </div>
-                    <span className="text-xs font-medium">Balanced</span>
+                    <span className="text-xs font-medium">{getAIAssistanceLevelLabel(settings.ai.assistanceLevel)}</span>
                   </div>
-                  <Slider defaultValue={[60]} max={100} step={10} />
+                  <Slider 
+                    min={0}
+                    max={100} 
+                    step={10} 
+                    value={[settings.ai.assistanceLevel]}
+                    onValueChange={(value) => handleSliderChange('ai', 'assistanceLevel', value)}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -168,12 +339,22 @@ const Settings = () => {
                 <SettingItem
                   title="Two-Factor Authentication"
                   description="Add an extra layer of security to your account"
-                  control={<Switch />}
+                  control={
+                    <Switch 
+                      checked={settings.account.twoFactorAuth}
+                      onCheckedChange={(value) => handleSwitchChange('account', 'twoFactorAuth', value)}
+                    />
+                  }
                 />
                 <SettingItem
                   title="Email Notifications"
                   description="Receive updates and notifications via email"
-                  control={<Switch defaultChecked />}
+                  control={
+                    <Switch 
+                      checked={settings.account.emailNotifications}
+                      onCheckedChange={(value) => handleSwitchChange('account', 'emailNotifications', value)}
+                    />
+                  }
                 />
                 <div className="pt-2 flex gap-2">
                   <Button variant="outline" className="neomorph-btn flex-1">

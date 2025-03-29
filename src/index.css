@@ -44,6 +44,33 @@
     --radius: 1rem;
   }
 
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 252 56% 57%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 217 32% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 32% 17%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 217 32% 17%;
+    --accent-foreground: 210 40% 98%;
+
+    --border: 217 32% 17%;
+    --input: 217 32% 17%;
+    --ring: 224 76% 48%;
+  }
+
   * {
     @apply border-border;
   }
@@ -51,6 +78,19 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', sans-serif;
+    transition: background-color 0.3s ease;
+  }
+
+  .dark .neomorph {
+    @apply bg-card rounded-xl shadow-[8px_8px_16px_#101418,-8px_-8px_16px_#1e232c] border border-secondary/20;
+  }
+  
+  .dark .neomorph-inset {
+    @apply bg-secondary rounded-xl shadow-[inset_4px_4px_8px_#101418,inset_-4px_-4px_8px_#1e232c] border border-secondary/20;
+  }
+  
+  .dark .neomorph-btn {
+    @apply bg-card rounded-xl shadow-[4px_4px_8px_#101418,-4px_-4px_8px_#1e232c] border border-secondary/20 hover:shadow-[2px_2px_4px_#101418,-2px_-2px_4px_#1e232c] active:shadow-[inset_4px_4px_8px_#101418,inset_-4px_-4px_8px_#1e232c] transition-all duration-300;
   }
 }
 
@@ -62,6 +102,7 @@
   
   .neomorph-inset {
     @apply bg-[#f1f3f9] rounded-xl shadow-[inset_4px_4px_8px_#e6e7f0,inset_-4px_-4px_8px_#ffffff] border border-white/50;
+    transition: all 0.3s ease;
   }
   
   .neomorph-btn {
@@ -184,5 +225,26 @@
   
   .card-hover:hover {
     @apply transform translate-y-[-5px] shadow-[10px_10px_20px_#e6e7f0,-10px_-10px_20px_#ffffff];
+  }
+
+  /* New animation styles */
+  @keyframes scaleIn {
+    0% {
+      transform: scale(0.9);
+      opacity: 0;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  
+  .animate-scale-in {
+    animation: scaleIn 0.3s ease-out forwards;
+  }
+  
+  .task-drag-active {
+    @apply z-10 shadow-[12px_12px_24px_#e6e7f0,-12px_-12px_24px_#ffffff] scale-[1.02];
+    transition: all 0.3s ease;
   }
 }
